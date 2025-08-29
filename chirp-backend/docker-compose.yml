@@ -1,0 +1,168 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: chirp_db
+      POSTGRES_USER: chirp
+      POSTGRES_PASSWORD: chirp123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./node-api/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chirp -d chirp_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis Cache and Queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # MinIO S3-compatible storage
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: chirp_access
+      MINIO_ROOT_PASSWORD: chirp_secret_key
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Create MinIO bucket
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until /usr/bin/mc config host add minio http://minio:9000 chirp_access chirp_secret_key; do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc mb minio/chirp-media;
+      /usr/bin/mc policy set public minio/chirp-media;
+      exit 0;
+      "
+
+  # Node.js API
+  node-api:
+    build:
+      context: ./node-api
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://chirp:chirp123@postgres:5432/chirp_db?schema=public
+      - REDIS_URL=redis://redis:6379
+      - S3_BUCKET=chirp-media
+      - S3_REGION=us-east-1
+      - S3_ACCESS_KEY=chirp_access
+      - S3_SECRET_KEY=chirp_secret_key
+      - S3_ENDPOINT=http://minio:9000
+      - PY_API_URL=http://python-ai:8000
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+      - JWT_SECRET=your_super_secret_jwt_key_here
+      - NODE_ENV=development
+      - PORT=3000
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      - TTS_PROVIDER=mock
+      - ANALYSIS_CONSENT_RETENTION_DAYS=365
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./node-api:/app
+      - /app/node_modules
+      - ./node-api/logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Python AI Service
+  python-ai:
+    build:
+      context: ./python-ai
+      dockerfile: Dockerfile
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ENVIRONMENT=development
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - WHISPER_MODEL_SIZE=base
+      - DEVICE=auto
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./python-ai:/app
+      - python_models:/app/models
+      - ./python-ai/logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # PgAdmin (Database Management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@chirp.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    profiles:
+      - tools
+
+  # Redis Commander (Redis Management)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  python_models:
+  pgadmin_data:
