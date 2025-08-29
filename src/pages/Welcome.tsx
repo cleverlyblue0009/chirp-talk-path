@@ -14,7 +14,7 @@ export default function Welcome() {
       description: 'Let\'s practice conversations together!',
       icon: Bird,
       color: 'primary',
-      route: '/kid/home'
+      route: '/kid/assessment'
     },
     {
       id: 'parent',

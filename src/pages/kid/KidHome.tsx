@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BirdMascot } from '@/components/BirdMascot';
 import { ChirpCard } from '@/components/ChirpCard';
-import { Coins, Flame, Heart, Home, School, UtensilsCrossed, Gamepad2 } from 'lucide-react';
+import { Coins, Flame, Heart, Home, School, UtensilsCrossed, Gamepad2, Bird } from 'lucide-react';
 import forestPathBg from '@/assets/forest-path-bg.png';
 
 interface LearningNode {
@@ -64,8 +64,8 @@ export default function KidHome() {
 
   const handleNodeClick = (node: LearningNode) => {
     if (!node.locked) {
-      console.log(`Starting ${node.title} scenario`);
-      navigate('/kid/scenario');
+      console.log(`Opening ${node.title} sub-map`);
+      navigate(`/kid/submap?scenario=${node.id}`);
     }
   };
 
@@ -157,6 +157,16 @@ export default function KidHome() {
             Tap a lesson to continue your conversation journey
           </p>
         </ChirpCard>
+      </div>
+
+      {/* Floating Companion Nest Button */}
+      <div className="fixed bottom-24 right-6 z-40">
+        <button
+          onClick={() => navigate('/kid/companion-nest')}
+          className="chirp-node bg-gradient-secondary text-white shadow-glow hover:scale-110 animate-float"
+        >
+          <Bird className="w-6 h-6" />
+        </button>
       </div>
 
       {/* Floating Companion */}
