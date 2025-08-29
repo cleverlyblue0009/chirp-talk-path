@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  role        Role
+  displayName String?
+  createdAt   DateTime @default(now())
+  children    Child[]  @relation("Caretaker")
+  
+  // Therapist relationships
+  assignedChildren Child[] @relation("TherapistAssignment")
+  createdScenarios Scenario[]
+
+  @@map("users")
+}
+
+enum Role { 
+  KID 
+  PARENT 
+  THERAPIST 
+  ADMIN 
+}
+
+model Child {
+  id           String   @id @default(cuid())
+  name         String
+  dob          DateTime?
+  level        Int      @default(1)
+  consentMedia Boolean  @default(false)
+  guardians    User[]   @relation("Caretaker")
+  therapistId  String?
+  therapist    User?    @relation("TherapistAssignment", fields: [therapistId], references: [id])
+  companions   CompanionUnlock[]
+  sessions     Session[]
+  createdAt    DateTime @default(now())
+  assessment   Assessment?
+  analysisJobs AnalysisJob[]
+
+  @@map("children")
+}
+
+model Scenario {
+  id          String  @id @default(cuid())
+  title       String
+  tags        String[]
+  difficulty  Int     @default(1)
+  scriptJson  Json
+  rubricJson  Json
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  sessions    Session[]
+
+  @@map("scenarios")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  childId      String
+  child        Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  scenarioId   String?
+  scenario     Scenario? @relation(fields: [scenarioId], references: [id])
+  moduleId     String?
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+  resultJson   Json?
+  mediaRef     String?
+  analysisRef  String? // pointer to aggregated analysis
+  analysisJobs AnalysisJob[]
+
+  @@map("sessions")
+}
+
+model Assessment {
+  id           String   @id @default(cuid())
+  childId      String   @unique
+  child        Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  rawResults   Json
+  level        Int
+  completedAt  DateTime @default(now())
+
+  @@map("assessments")
+}
+
+model CompanionUnlock {
+  id        String   @id @default(cuid())
+  childId   String
+  child     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  type      String
+  meta      Json?
+  earnedAt  DateTime @default(now())
+
+  @@map("companion_unlocks")
+}
+
+model AnalysisJob {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  childId     String
+  child       Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  status      JobStatus @default(PENDING)
+  resultJson  Json?
+  createdAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  retryCount  Int       @default(0)
+  errorMessage String?
+
+  @@map("analysis_jobs")
+}
+
+enum JobStatus { 
+  PENDING 
+  RUNNING 
+  DONE 
+  FAILED 
+}
