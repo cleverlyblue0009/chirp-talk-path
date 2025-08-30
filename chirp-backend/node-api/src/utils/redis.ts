@@ -4,7 +4,7 @@ import { logger } from './logger';
 
 // Redis connection
 export const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: null,
   retryDelayOnFailover: 100,
   enableReadyCheck: false,
   lazyConnect: true,
