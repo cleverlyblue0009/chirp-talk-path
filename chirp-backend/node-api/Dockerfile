@@ -13,8 +13,8 @@ RUN apk add --no-cache \
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy application code
 COPY . .
@@ -24,6 +24,9 @@ RUN npx prisma generate
 
 # Build TypeScript
 RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --production
 
 # Create logs directory
 RUN mkdir -p logs
