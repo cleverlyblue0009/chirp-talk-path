@@ -83,7 +83,7 @@ export class AnalysisWorker {
         where: { id: job.id as string },
         data: {
           status: JobStatus.DONE,
-          resultJson: aggregatedAnalysis,
+          resultJson: aggregatedAnalysis as any,
           finishedAt: new Date(),
         },
       });
@@ -93,7 +93,7 @@ export class AnalysisWorker {
         where: { id: sessionId },
         data: {
           analysisRef: job.id as string,
-          resultJson: aggregatedAnalysis,
+          resultJson: aggregatedAnalysis as any,
         },
       });
 
