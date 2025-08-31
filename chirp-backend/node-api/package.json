@@ -43,8 +43,8 @@
     "swagger-ui-express": "^5.0.0",
     "swagger-jsdoc": "^6.2.8",
     "uuid": "^9.0.1",
-    "@azure/cognitiveservices-speech-sdk": "^1.33.1",
-    "elevenlabs-node": "^1.4.0"
+    "microsoft-cognitiveservices-speech-sdk": "^1.33.1",
+    "@elevenlabs/elevenlabs-js": "^2.13.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
