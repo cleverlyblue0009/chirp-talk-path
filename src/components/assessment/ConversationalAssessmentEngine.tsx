@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { RealTimeAnalysisEngine } from './RealTimeAnalysisEngine';
 import { RiveBirdCharacter, useBirdCharacters } from './RiveBirdCharacter';
 import { SpeechRecorder } from './SpeechRecorder';
+import { LiveAnalysisDisplay } from './LiveAnalysisDisplay';
 import { 
   ConversationSegment, 
   BirdCharacter, 
@@ -88,6 +89,96 @@ export function ConversationalAssessmentEngine({
 
   // Bird character management
   const { activeBird, registerBird, speakAsBird, triggerBirdAnimation, setBirdMood } = useBirdCharacters(birds);
+
+  // Enhanced TTS with child-friendly voices
+  const speakAsBirdWithTTS = useCallback(async (birdId: string, text: string) => {
+    const bird = birds.find(b => b.id === birdId);
+    if (!bird) return;
+
+    return new Promise<void>((resolve) => {
+      // Cancel any ongoing speech
+      speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Configure voice for child-friendly, non-robotic speech
+      const voices = speechSynthesis.getVoices();
+      let selectedVoice = null;
+
+      // Prefer high-quality voices for different birds
+      if (birdId === 'chirpy') {
+        selectedVoice = voices.find(voice => 
+          voice.name.includes('Samantha') || // macOS
+          voice.name.includes('Microsoft Zira') || // Windows
+          voice.name.includes('Google UK English Female') || // Chrome
+          voice.lang.startsWith('en') && voice.name.includes('Female')
+        );
+      } else if (birdId === 'buddy') {
+        selectedVoice = voices.find(voice => 
+          voice.name.includes('Alex') || // macOS
+          voice.name.includes('Microsoft David') || // Windows
+          voice.name.includes('Google UK English Male') || // Chrome
+          voice.lang.startsWith('en') && voice.name.includes('Male')
+        );
+      } else if (birdId === 'wise') {
+        selectedVoice = voices.find(voice => 
+          voice.name.includes('Victoria') || // macOS
+          voice.name.includes('Microsoft Hazel') || // Windows
+          voice.lang.startsWith('en') && voice.name.includes('Female')
+        );
+      }
+
+      // Fallback to any English voice
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+      }
+
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+
+      // Make it sound more natural and child-friendly
+      utterance.rate = bird.voiceSettings.speed || 0.9; // Slightly slower for clarity
+      utterance.pitch = bird.voiceSettings.pitch !== undefined ? 
+        1 + (bird.voiceSettings.pitch / 10) : 1.1; // Slightly higher pitch for friendliness
+      utterance.volume = 0.8; // Not too loud
+
+      // Add natural pauses and intonation
+      const processedText = addNaturalPauses(text);
+      utterance.text = processedText;
+
+      utterance.onstart = () => {
+        // Trigger talking animation
+        setBirdMood(birdId, 'talk');
+        triggerBirdAnimation(birdId, 'talk');
+      };
+
+      utterance.onend = () => {
+        // Return to idle mood
+        setBirdMood(birdId, 'idle');
+        resolve();
+      };
+
+      utterance.onerror = (error) => {
+        console.error('Speech synthesis error:', error);
+        setBirdMood(birdId, 'idle');
+        resolve();
+      };
+
+      speechSynthesis.speak(utterance);
+    });
+  }, [birds, setBirdMood, triggerBirdAnimation]);
+
+  // Add natural pauses and intonation to text
+  const addNaturalPauses = useCallback((text: string): string => {
+    return text
+      .replace(/\./g, '. ') // Pause after periods
+      .replace(/\?/g, '? ') // Pause after questions
+      .replace(/!/g, '! ') // Pause after exclamations
+      .replace(/,/g, ', ') // Brief pause after commas
+      .replace(/\s+/g, ' ') // Clean up extra spaces
+      .trim();
+  }, []);
 
   // Initialize conversation script based on current segment
   const initializeSegmentScript = useCallback((segment: ConversationSegment) => {
@@ -330,8 +421,8 @@ export function ConversationalAssessmentEngine({
       setBirdMood(step.speaker, step.mood);
     }
 
-    // Speak the line
-    await speakAsBird(step.speaker, step.text);
+    // Speak the line with enhanced TTS
+    await speakAsBirdWithTTS(step.speaker, step.text);
 
     // Record the turn
     const turn: ConversationTurn = {
@@ -576,12 +667,15 @@ export function ConversationalAssessmentEngine({
               {segments[currentSegmentIndex]?.title}
             </div>
 
-            {/* Speech Input */}
+            {/* Speech Input - No typed questions, only live transcription */}
             {isWaitingForResponse && (
               <div className="space-y-4">
-                <div className="bg-primary/10 rounded-lg p-4">
+                <div className="bg-secondary/20 rounded-lg p-4">
+                  <p className="text-muted-foreground text-sm mb-2">
+                    🎤 Listening for your response...
+                  </p>
                   <p className="text-primary font-medium">
-                    {currentPrompt}
+                    Take your time and speak naturally!
                   </p>
                 </div>
                 
@@ -591,26 +685,17 @@ export function ConversationalAssessmentEngine({
                   }}
                   maxDuration={30}
                   expectedKeywords={[]}
+                  showLiveTranscription={true}
                 />
               </div>
             )}
 
-            {/* Real-time Feedback (Subtle) */}
-            {analysisState && (
-              <div className="flex justify-center space-x-4 text-xs text-muted-foreground">
-                <span className={cn(
-                  "px-2 py-1 rounded-full",
-                  analysisState.current.engagementLevel.level > 60 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                )}>
-                  {analysisState.current.engagementLevel.level > 60 ? "Great attention!" : "Take your time"}
-                </span>
-                {analysisState.current.eyeContact.isLookingAtCamera && (
-                  <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                    Good eye contact!
-                  </span>
-                )}
-              </div>
-            )}
+            {/* Live Analysis Display */}
+            <LiveAnalysisDisplay 
+              analysisState={analysisState}
+              isVisible={isActive}
+              className="max-w-2xl mx-auto"
+            />
           </div>
         )}
       </ChirpCard>

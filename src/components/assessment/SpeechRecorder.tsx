@@ -12,6 +12,7 @@ interface SpeechRecorderProps {
   expectedKeywords?: string[];
   className?: string;
   disabled?: boolean;
+  showLiveTranscription?: boolean;
 }
 
 export function SpeechRecorder({
@@ -21,7 +22,8 @@ export function SpeechRecorder({
   maxDuration = 30,
   expectedKeywords = [],
   className,
-  disabled = false
+  disabled = false,
+  showLiveTranscription = false
 }: SpeechRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -328,7 +330,25 @@ export function SpeechRecorder({
               </div>
 
               {/* Live transcription */}
-              {transcription && (
+              {showLiveTranscription && transcription && (
+                <div className="bg-primary/10 rounded-lg p-4 border-2 border-primary/20">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                    <p className="text-sm font-medium text-primary">Live Transcript:</p>
+                  </div>
+                  <p className="text-base font-medium text-foreground leading-relaxed">
+                    {transcription}
+                  </p>
+                  {transcription.length > 50 && (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Great job! I can hear you clearly! 🎉
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Fallback transcription for non-live mode */}
+              {!showLiveTranscription && transcription && (
                 <div className="bg-secondary/20 rounded-lg p-3">
                   <p className="text-sm text-muted-foreground mb-1">I hear:</p>
                   <p className="text-sm font-medium">{transcription}</p>

@@ -129,7 +129,7 @@ export function RiveBirdCharacter({
     }
   }, [realTimeEmotion, isReady, rive, getMoodInput, currentAnimation, currentMood]);
 
-  // Speech synthesis with lip-sync
+  // Enhanced speech synthesis with improved lip-sync
   const speak = useCallback(async (
     text: string, 
     audioUrl?: string, 
@@ -138,64 +138,135 @@ export function RiveBirdCharacter({
     if (!isReady || !rive) return;
 
     const visemeInput = getVisemeInput();
-    if (!visemeInput) return;
+    const moodInput = getMoodInput();
+    
+    // Set talking mood
+    if (moodInput) {
+      moodInput.value = 'talk';
+    }
 
     try {
-      let audio: HTMLAudioElement;
-      
       if (audioUrl) {
-        // Use provided TTS audio
-        audio = new Audio(audioUrl);
+        // Use provided TTS audio with viseme data
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+        
+        if (visemeTimeline && visemeInput) {
+          // Schedule precise viseme changes
+          visemeTimeline.forEach(frame => {
+            setTimeout(() => {
+              const visemeIndex = VISEME_MAP[frame.viseme as keyof typeof VISEME_MAP] || 0;
+              visemeInput.value = visemeIndex;
+            }, frame.time * 1000);
+          });
+
+          // Reset to rest position after speech
+          const totalDuration = Math.max(...visemeTimeline.map(f => f.time)) * 1000;
+          setTimeout(() => {
+            visemeInput.value = 0; // REST position
+            if (moodInput) moodInput.value = 'idle';
+          }, totalDuration + 500);
+        }
+
+        await audio.play();
       } else {
-        // Generate TTS using Web Speech API
+        // Use Web Speech API with enhanced mouth animation
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.voice = speechSynthesis.getVoices().find(
-          voice => voice.name.includes(character.voiceSettings.voice)
-        ) || speechSynthesis.getVoices()[0];
-        utterance.pitch = character.voiceSettings.pitch;
-        utterance.rate = character.voiceSettings.speed;
         
-        // Create audio from speech synthesis
+        // Configure voice for natural speech
+        const voices = speechSynthesis.getVoices();
+        let selectedVoice = voices.find(voice => 
+          voice.name.includes(character.voiceSettings.voice)
+        );
+        
+        if (!selectedVoice) {
+          // Fallback to quality voices
+          selectedVoice = voices.find(voice => 
+            voice.lang.startsWith('en') && 
+            (voice.name.includes('Natural') || voice.name.includes('Premium'))
+          ) || voices.find(voice => voice.lang.startsWith('en'));
+        }
+
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+        }
+
+        // Enhanced voice settings for child-friendly speech
+        utterance.pitch = 1 + (character.voiceSettings.pitch / 10);
+        utterance.rate = character.voiceSettings.speed * 0.9; // Slightly slower for clarity
+        utterance.volume = 0.8;
+
+        // Start enhanced mouth animation
+        enhancedMouthAnimation(text, utterance.rate);
+
+        utterance.onend = () => {
+          if (visemeInput) visemeInput.value = 0; // REST position
+          if (moodInput) moodInput.value = 'idle';
+        };
+
+        utterance.onerror = () => {
+          if (visemeInput) visemeInput.value = 0;
+          if (moodInput) moodInput.value = 'idle';
+        };
+
         speechSynthesis.speak(utterance);
-        return; // Web Speech API doesn't provide audio file for viseme sync
       }
-
-      audioRef.current = audio;
-      
-      if (visemeTimeline) {
-        visemeTimelineRef.current = visemeTimeline;
-        
-        // Schedule viseme changes
-        const startTime = Date.now();
-        
-        visemeTimeline.forEach(frame => {
-          const timeout = setTimeout(() => {
-            const visemeIndex = VISEME_MAP[frame.viseme as keyof typeof VISEME_MAP] || 0;
-            visemeInput.value = visemeIndex;
-          }, frame.time * 1000);
-          
-          // Store timeout for cleanup
-          if (!visemeTimeoutRef.current) {
-            visemeTimeoutRef.current = timeout;
-          }
-        });
-
-        // Reset to rest position after speech
-        const totalDuration = Math.max(...visemeTimeline.map(f => f.time)) * 1000;
-        setTimeout(() => {
-          visemeInput.value = 0; // REST position
-        }, totalDuration + 500);
-      }
-
-      // Play audio
-      await audio.play();
       
     } catch (error) {
       console.error('Speech synthesis failed:', error);
       // Fallback to basic mouth animation
       basicMouthAnimation(text.length);
+      
+      // Reset mood after fallback
+      setTimeout(() => {
+        if (moodInput) moodInput.value = 'idle';
+      }, text.length * 100);
     }
-  }, [isReady, rive, getVisemeInput, character]);
+  }, [isReady, rive, getVisemeInput, getMoodInput, character]);
+
+  // Enhanced mouth animation based on text analysis
+  const enhancedMouthAnimation = useCallback((text: string, speechRate: number) => {
+    if (!isReady || !rive) return;
+
+    const visemeInput = getVisemeInput();
+    if (!visemeInput) return;
+
+    // Analyze text for better mouth shapes
+    const words = text.toLowerCase().split(/\s+/);
+    const totalDuration = (text.length * 80) / speechRate; // Estimate based on speech rate
+    const wordDuration = totalDuration / words.length;
+    
+    let currentTime = 0;
+
+    words.forEach((word, index) => {
+      setTimeout(() => {
+        // Choose viseme based on prominent sounds in word
+        let viseme = 0; // REST
+        
+        if (word.includes('a') || word.includes('ah')) viseme = 1; // AA
+        else if (word.includes('e') || word.includes('ee')) viseme = 2; // EE
+        else if (word.includes('o') || word.includes('oh')) viseme = 3; // OH
+        else if (word.includes('m') || word.includes('b') || word.includes('p')) viseme = 4; // M
+        else if (word.includes('f') || word.includes('v')) viseme = 5; // FV
+        else if (word.includes('d') || word.includes('t') || word.includes('n')) viseme = 6; // DD
+        
+        visemeInput.value = viseme;
+        
+        // Brief pause between words
+        setTimeout(() => {
+          visemeInput.value = 0;
+        }, wordDuration * 0.7);
+        
+      }, currentTime);
+      
+      currentTime += wordDuration;
+    });
+
+    // Final rest position
+    setTimeout(() => {
+      visemeInput.value = 0;
+    }, totalDuration);
+  }, [isReady, rive, getVisemeInput]);
 
   // Fallback mouth animation when TTS/viseme data unavailable
   const basicMouthAnimation = useCallback((textLength: number) => {
