@@ -14,6 +14,7 @@ import Assessment from "./pages/kid/Assessment";
 import AssessmentResult from "./pages/kid/AssessmentResult";
 import ParentDashboard from "./pages/parent/ParentDashboard";
 import TherapistDashboard from "./pages/therapist/TherapistDashboard";
+import ConversationalAssessment from "./pages/ConversationalAssessment";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/kid/companion-nest" element={<CompanionNest />} />
           <Route path="/kid/assessment" element={<Assessment />} />
           <Route path="/kid/assessment-result" element={<AssessmentResult />} />
+          <Route path="/conversational-assessment" element={<ConversationalAssessment />} />
           <Route path="/parent/dashboard" element={<ParentDashboard />} />
           <Route path="/therapist/dashboard" element={<TherapistDashboard />} />
           {/* Legacy index route for reference */}
