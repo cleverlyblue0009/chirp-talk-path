@@ -510,3 +510,6 @@ export function ConversationalAssessment({
     </div>
   );
 }
+
+// Default export for easier importing
+export default ConversationalAssessment;
