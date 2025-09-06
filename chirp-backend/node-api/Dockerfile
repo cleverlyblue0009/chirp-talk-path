@@ -3,12 +3,14 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including OpenSSL
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
-    curl
+    curl \
+    openssl \
+    openssl-dev
 
 # Copy package files
 COPY package*.json ./
@@ -25,8 +27,9 @@ RUN npx prisma generate
 # Build TypeScript
 RUN npm run build
 
-#Remove dev dependencies after build 
+# Remove dev dependencies after build 
 RUN npm prune --production
+
 # Create logs directory
 RUN mkdir -p logs
 

@@ -72,14 +72,14 @@ services:
       context: ./node-api
       dockerfile: Dockerfile
     environment:
-      - DATABASE_URL=postgresql://postgres:Thunderheart451!@localhost:5432/chirp_db?schema=public
-      - REDIS_URL=redis://localhost:6379
+      - DATABASE_URL=postgresql://postgres:Thunderheart451!@postgres:5432/chirp_db?schema=public
+      - REDIS_URL=redis://redis:6379
       - S3_BUCKET=chirp-path
       - S3_REGION=us-east-1
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
-      - S3_ENDPOINT=http://localhost:9000
-      - PY_API_URL=http://localhost:8000
+      - S3_ENDPOINT=http://minio:9000
+      - PY_API_URL=http://python-ai:8000
       - FIREBASE_PROJECT_ID=talkiebuddy-1613d
       - FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@talkiebuddy-1613d.iam.gserviceaccount.com
       - FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDAHErY+OMze7Ql\ndvSZS5P6tFBuVX6b9xVL4xRi/5s4SdSDj8o6maJm9xx+w80aSjMV6H1xSr3CXHN0\nNQBYQ9cZdTnOCsE5Mmf/8T2rB1VgAgvUBQhuESp5Ki5Q9WmXJ1xOe5J3t5xn77Yt\n/1KpbMYKwltCvk2n+o1t8+EKB2JjVcFeOFXpVtc4Ad0/X3aiZ1V4Asz1cLiLwSBC\nZ3BapDb5w3khwjsHxJ3Upd0CUScrPf+EZkIUp0O/1YQhGlapr2p7AUNCR5G7HH6Q\ncsjVe8OMI+NxEb19r1w8310+xSCOtNsLIO9cJ1MuZTIBOWIF8bITKVcPG8ZfiuyN\nJRwKgFu7AgMBAAECggEAXKCHmiwO6DDaAEJl10/wjq3IJhrEzBCLTSa1GrKhtbcr\nZy+6Uxzmh/zX2WsxBl8GWKbbbPebnQ4UgNBZVTWIjfbOo0DeP2TFbktz73W+vWbf\nKyAuG1vdfcRPxqs9eSr6P8EnMt/t4tNapLz5r0UKDAAAHqNBMCAHdx9ivwImdzv4\nsWhmSwGcVopTExfjiZSwPvneBkAIIhpTMrNnI6/oy9p5d+kCSvxbCieZfnOjXfQA\nMjZYj9uaE7iwiWN8ffejkNr9patMPh2cSZbRjlPKNmYsXStL7aMaRyztNY4ZdBFS\nhMb0BfIWvslqp8M59Ywb6mxT+lIr3y9AHxwBwAEowQKBgQDp/0TDMRRl6EMduj1l\nC3fj/1Ka/P3aIE2vGDCK/YxvEV30rLBSuhvScX5JAKS7CLq3G3T6aKHvrO7w1YaE\nAQ94e9/1PnbevwJrhRZsK4DxMdXdLYJ3Ko82/VOTCjBl59qZRE/BVSofZt3akt3p\n6Z/0hlGXTcqFeXm4JudME7AsWwKBgQDSLLzLBaVkTq2ubCX13te1CnVBsdG10mjT\nnUiZXM8XEdd8rT32PO68FmdZG6mB39/0d+S9mqqAtenOSCJUYnsSKer2uUgbs6KK\nkIQ8ik7g8z4AZ1rde8M2sETboLvZ7i4gk2apn/xD1m8llLohLuEb/DyaBWbA3hHs\nWYE7/3EsIQKBgGTSloA8D3vxXanba0S0ck4M3zzksURhEtfU5mWc5fudUgxws/CR\nPBeqyy0NV+02z6zB6d9TYiLxMmsWtcT+5/mT9mWnKnTDfHlzeLvW6tICFRId388U\nyWx6Lp52j2/5PJk5c9vrpCCvo/vfuDpnbYJgtZsp648jTizoplSDTy9tAoGAXsDA\nlJ8FA4XdE2e6bXB7uyjt2CI8s0Ya8FxWYJ3Q10u55IGOD7dEwhMvoKKx9tVheCud\nOkXCXKimsdMfdv+3EGdJgNXjRmnj+6hPlaOdEBlZeIEgG/4x8jPht0ptpkCVFyad\nABgaeNLx5PV6PH+QCTfccmvA+W6kkfOAKfZtpUECgYAeIGPGVzeBiEvTaKwQboZL\nII6Y++Zd2m+ddGaQ3eMB5w/zGyltOceOnQB8taPwOmf3wCMJm5l7k7kKLwbiPa0g\nMNRMIsRIH/0ll2hA5XPX8m4f6sPYuPRkQkul1uz/ybMLXd30n+vLPlnRGvS7xZlf\nVlE4p/kX7fMi1Si2rLInQg==\n-----END PRIVATE KEY-----\n

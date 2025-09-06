@@ -40,5 +40,3 @@ CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "
 # For production (current setup)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# For development (if needed)
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
