@@ -113,7 +113,7 @@ export function ConversationalAssessment({
     const childProfile = {
       communicationStrengths: strengths.map(s => s.strength),
       areasForGrowth: developmentAreas.map(d => d.area),
-      preferredInteractionStyle: determineInteractionStyle(categoryScores),
+      preferredInteractionStyle: determineInteractionStyle(categoryScores) as 'verbal' | 'visual' | 'gestural' | 'mixed',
       comfortZones: identifyComfortZones(results),
       interestTopics: extractInterestTopics(conversationDataRef.current.turns),
       socialPreferences: determineSocialPreferences(categoryScores)
@@ -365,7 +365,7 @@ export function ConversationalAssessment({
       <div className="flex items-center justify-between">
         {onBack && (
           <ChirpButton
-            variant="outline"
+            variant="secondary"
             icon={ArrowLeft}
             onClick={onBack}
           >
@@ -468,11 +468,25 @@ export function ConversationalAssessment({
           {/* Start Button */}
           <div className="text-center">
             <ChirpButton
-              onClick={() => {
+              onClick={async () => {
+                console.log('🚀 Starting conversational assessment...');
+                
+                // Request media permissions upfront
+                try {
+                  await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user' },
+                    audio: { echoCancellation: true }
+                  });
+                  console.log('✅ Media permissions granted');
+                } catch (error: any) {
+                  console.warn('⚠️ Media permissions denied, but continuing with assessment:', error);
+                  // Continue anyway - the system will use fallbacks
+                }
+                
                 setCurrentPhase('assessment');
                 sessionStartTime.current = Date.now();
               }}
-              size="lg"
+              size="large"
               icon={Play}
               className="text-lg px-8 py-4"
             >

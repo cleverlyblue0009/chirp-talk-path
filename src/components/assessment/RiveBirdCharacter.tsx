@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRive, Layout, Fit, Alignment } from '@rive-app/react-canvas';
 import { BirdCharacter, BirdBehaviorChange, EmotionState } from '@/types/conversational-assessment';
 import { cn } from '@/lib/utils';
+import chirpMascot from '@/assets/chirp-mascot.png';
 
 interface RiveBirdCharacterProps {
   character: BirdCharacter;
@@ -38,6 +39,7 @@ export function RiveBirdCharacter({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
   const [currentAnimation, setCurrentAnimation] = useState<string>('idle');
+  const [useRiveFallback, setUseRiveFallback] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const visemeTimelineRef = useRef<Array<{time: number, viseme: string}>>([]);
   const visemeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -48,6 +50,7 @@ export function RiveBirdCharacter({
     large: 'w-48 h-48'
   };
 
+  // Try to use Rive, but fallback to CSS animations if it fails
   const {
     RiveComponent,
     rive
@@ -61,12 +64,17 @@ export function RiveBirdCharacter({
     }),
     autoplay: true,
     onLoad: () => {
+      console.log(`✅ Rive animation loaded for ${character.name}`);
       setIsReady(true);
+      setUseRiveFallback(false);
       onReady?.();
     },
     onLoadError: (error) => {
-      console.error('Failed to load Rive animation:', error);
-      // Fallback to static image or basic animation
+      console.warn(`⚠️ Rive animation failed for ${character.name}:`, error);
+      console.log(`🎨 Using CSS animation fallback for ${character.name}`);
+      setUseRiveFallback(true);
+      setIsReady(true);
+      onReady?.();
     }
   });
 
@@ -341,6 +349,66 @@ export function RiveBirdCharacter({
     }
   }, [isReady, speak, triggerBlink, triggerHop, triggerWingFlap, getMoodInput]);
 
+  // CSS Animation fallback component
+  const CSSAnimatedBird = () => {
+    const getAnimationClasses = () => {
+      const baseClasses = 'w-full h-full object-contain transition-all duration-500';
+      
+      switch (currentAnimation) {
+        case 'cheer':
+        case 'celebrate':
+          return `${baseClasses} animate-bounce`;
+        case 'talk':
+          return `${baseClasses} animate-pulse`;
+        case 'think':
+          return `${baseClasses} animate-wiggle`;
+        case 'hop':
+          return `${baseClasses} animate-bounce`;
+        case 'comfort':
+          return `${baseClasses} animate-float`;
+        default: // idle
+          return `${baseClasses} animate-float`;
+      }
+    };
+
+    const getBirdImage = () => {
+      // Use the existing chirp mascot image as fallback
+      return chirpMascot;
+    };
+
+    return (
+      <div className="relative w-full h-full">
+        <img 
+          src={getBirdImage()}
+          alt={character.name}
+          className={getAnimationClasses()}
+          style={{
+            filter: currentAnimation === 'talk' ? 'brightness(1.1)' : 'none',
+            transform: currentAnimation === 'cheer' ? 'scale(1.05)' : 'scale(1)'
+          }}
+        />
+        
+        {/* Talking indicator */}
+        {currentAnimation === 'talk' && (
+          <div className="absolute bottom-2 right-2">
+            <div className="flex space-x-1">
+              <div className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        )}
+        
+        {/* Mood indicator */}
+        {(currentAnimation === 'cheer' || currentAnimation === 'celebrate') && (
+          <div className="absolute -top-2 -right-2">
+            <div className="text-yellow-500 animate-spin text-lg">⭐</div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div 
       ref={containerRef}
@@ -351,9 +419,13 @@ export function RiveBirdCharacter({
         className
       )}
     >
-      {/* Rive Animation */}
+      {/* Rive Animation or CSS Fallback */}
       <div className="w-full h-full">
-        <RiveComponent className="w-full h-full" />
+        {useRiveFallback ? (
+          <CSSAnimatedBird />
+        ) : (
+          <RiveComponent className="w-full h-full" />
+        )}
       </div>
 
       {/* Loading State */}
