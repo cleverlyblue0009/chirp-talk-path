@@ -43,15 +43,16 @@ export function SpeechRecorder({
   useEffect(() => {
     // Initialize speech recognition if available
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       
       if (recognitionRef.current) {
         recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
         recognitionRef.current.lang = 'en-US';
+        recognitionRef.current.maxAlternatives = 1;
 
-        recognitionRef.current.onresult = (event) => {
+        recognitionRef.current.onresult = (event: any) => {
           let finalTranscript = '';
           let interimTranscript = '';
 
@@ -64,14 +65,34 @@ export function SpeechRecorder({
             }
           }
 
-          setTranscription(finalTranscript || interimTranscript);
+          const currentTranscript = finalTranscript || interimTranscript;
+          setTranscription(currentTranscript);
+          console.log(`🎤 Speech recognition: "${currentTranscript}"`);
         };
 
-        recognitionRef.current.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
-          setError('Speech recognition failed. You can still continue!');
+        recognitionRef.current.onstart = () => {
+          console.log('🎤 Speech recognition started');
+          setError(null);
+        };
+
+        recognitionRef.current.onend = () => {
+          console.log('🎤 Speech recognition ended');
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('❌ Speech recognition error:', event.error);
+          if (event.error === 'not-allowed') {
+            setError('Microphone permission denied. Please allow microphone access and try again.');
+          } else if (event.error === 'no-speech') {
+            setError('No speech detected. Try speaking a bit louder!');
+          } else {
+            setError('Speech recognition failed. You can still continue!');
+          }
         };
       }
+    } else {
+      console.warn('⚠️ Speech recognition not supported in this browser');
+      setError('Speech recognition not supported in this browser. You can still use the assessment!');
     }
 
     return () => {
@@ -99,6 +120,8 @@ export function SpeechRecorder({
   const startRecording = async () => {
     try {
       setError(null);
+      console.log('🎤 Requesting microphone access...');
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -106,6 +129,8 @@ export function SpeechRecorder({
           sampleRate: 44100
         }
       });
+      
+      console.log('✅ Microphone access granted');
 
       // Set up audio context for level monitoring
       audioContextRef.current = new AudioContext();
@@ -187,9 +212,18 @@ export function SpeechRecorder({
         });
       }, 1000);
 
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-      setError('Could not access microphone. Please check permissions.');
+    } catch (error: any) {
+      console.error('❌ Failed to start recording:', error);
+      
+      if (error.name === 'NotAllowedError') {
+        setError('Microphone permission denied. Please allow microphone access and try again.');
+      } else if (error.name === 'NotFoundError') {
+        setError('No microphone found. Please connect a microphone and try again.');
+      } else if (error.name === 'NotReadableError') {
+        setError('Microphone is being used by another application. Please close other apps and try again.');
+      } else {
+        setError('Could not access microphone. Please check permissions and try again.');
+      }
     }
   };
 

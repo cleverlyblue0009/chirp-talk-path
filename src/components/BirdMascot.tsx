@@ -32,7 +32,7 @@ export function BirdMascot({
     setIsVisible(true);
   }, []);
 
-  // Voice narration function
+  // Enhanced voice narration function with character-specific voices
   const speakText = useCallback((text: string) => {
     if (!speakMessage || !text) return;
 
@@ -41,39 +41,102 @@ export function BirdMascot({
 
     const utterance = new SpeechSynthesisUtterance(text);
     
-    // Configure voice for child-friendly speech
+    // Configure voice for child-friendly speech with character personality
     const setupVoice = () => {
       const voices = speechSynthesis.getVoices();
-      const selectedVoice = voices.find(voice => 
-        voice.name.includes('Samantha') || // macOS - very natural
-        voice.name.includes('Google UK English Female') || // Chrome
-        voice.name.includes('Microsoft Zira Desktop') || // Windows 10+
-        (voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female'))
-      ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+      
+      // Enhanced voice selection with better fallbacks
+      let selectedVoice = null;
+      
+      // Try to find the best possible voices in order of preference
+      const voicePreferences = [
+        // Premium/Natural voices (best quality)
+        'Google UK English Female',
+        'Microsoft Aria Online (Natural) - English (United States)',
+        'Microsoft Zira Desktop - English (United States)', 
+        'Samantha', // macOS
+        'Alex', // macOS male
+        'Victoria', // macOS female
+        
+        // Good fallbacks
+        'Google US English',
+        'Microsoft David Desktop',
+        'Microsoft Mark Desktop',
+        
+        // Basic fallbacks
+        ...voices.filter(v => v.lang.startsWith('en') && v.name.includes('Female')).map(v => v.name),
+        ...voices.filter(v => v.lang.startsWith('en')).map(v => v.name)
+      ];
+
+      // Find the first available voice from our preferences
+      for (const prefName of voicePreferences) {
+        selectedVoice = voices.find(voice => voice.name.includes(prefName));
+        if (selectedVoice) break;
+      }
+
+      // Ultimate fallback
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+      }
 
       if (selectedVoice) {
         utterance.voice = selectedVoice;
+        console.log(`🎤 Using voice: ${selectedVoice.name} for bird character`);
       }
 
-      // Apply voice settings
-      utterance.rate = voiceSettings.rate || 0.9;
-      utterance.pitch = voiceSettings.pitch || 1.1;
-      utterance.volume = voiceSettings.volume || 0.8;
+      // Enhanced voice settings for warm, child-friendly speech
+      utterance.rate = Math.max(0.6, Math.min(1.2, voiceSettings.rate || 0.85)); // Slower for clarity
+      utterance.pitch = Math.max(0.8, Math.min(1.5, voiceSettings.pitch || 1.15)); // Higher for friendliness
+      utterance.volume = Math.max(0.5, Math.min(1.0, voiceSettings.volume || 0.85));
 
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
+      // Add natural pauses and child-friendly speech patterns
+      utterance.text = addChildFriendlyPauses(text);
+
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        console.log(`🗣️ Bird speaking: "${text.substring(0, 50)}..."`);
+      };
+      
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        console.log('✅ Bird finished speaking');
+      };
+      
+      utterance.onerror = (error) => {
+        console.error('❌ Speech synthesis error:', error);
+        setIsSpeaking(false);
+      };
 
       speechSynthesis.speak(utterance);
     };
 
-    // Handle voice loading
+    // Handle voice loading with timeout
     if (speechSynthesis.getVoices().length === 0) {
       speechSynthesis.addEventListener('voiceschanged', setupVoice, { once: true });
+      // Fallback timeout in case voices don't load
+      setTimeout(setupVoice, 1000);
     } else {
       setupVoice();
     }
   }, [speakMessage, voiceSettings]);
+
+  // Add child-friendly pauses and speech patterns
+  const addChildFriendlyPauses = useCallback((text: string): string => {
+    return text
+      // Add pauses after greetings
+      .replace(/\b(Hi|Hello|Hey)\b/gi, '$1!')
+      // Add gentle pauses after questions
+      .replace(/\?/g, '?... ')
+      // Add excitement to positive words
+      .replace(/\b(great|wonderful|amazing|fantastic|awesome)\b/gi, '$1!')
+      // Add pauses after commas for natural breathing
+      .replace(/,/g, ',... ')
+      // Add emphasis to encouraging words
+      .replace(/\b(you can|you're|good job|well done)\b/gi, '$1!')
+      // Clean up extra spaces
+      .replace(/\s+/g, ' ')
+      .trim();
+  }, []);
 
   // Speak message when it changes
   useEffect(() => {
