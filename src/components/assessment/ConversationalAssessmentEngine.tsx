@@ -90,7 +90,7 @@ export function ConversationalAssessmentEngine({
   // Bird character management
   const { activeBird, registerBird, speakAsBird, triggerBirdAnimation, setBirdMood } = useBirdCharacters(birds);
 
-  // Enhanced TTS with child-friendly voices
+  // Enhanced TTS with child-friendly voices and natural speech patterns
   const speakAsBirdWithTTS = useCallback(async (birdId: string, text: string) => {
     const bird = birds.find(b => b.id === birdId);
     if (!bird) return;
@@ -101,82 +101,154 @@ export function ConversationalAssessmentEngine({
 
       const utterance = new SpeechSynthesisUtterance(text);
       
-      // Configure voice for child-friendly, non-robotic speech
-      const voices = speechSynthesis.getVoices();
-      let selectedVoice = null;
+      // Wait for voices to be loaded
+      const setupVoice = () => {
+        const voices = speechSynthesis.getVoices();
+        let selectedVoice = null;
 
-      // Prefer high-quality voices for different birds
-      if (birdId === 'chirpy') {
-        selectedVoice = voices.find(voice => 
-          voice.name.includes('Samantha') || // macOS
-          voice.name.includes('Microsoft Zira') || // Windows
-          voice.name.includes('Google UK English Female') || // Chrome
-          voice.lang.startsWith('en') && voice.name.includes('Female')
-        );
-      } else if (birdId === 'buddy') {
-        selectedVoice = voices.find(voice => 
-          voice.name.includes('Alex') || // macOS
-          voice.name.includes('Microsoft David') || // Windows
-          voice.name.includes('Google UK English Male') || // Chrome
-          voice.lang.startsWith('en') && voice.name.includes('Male')
-        );
-      } else if (birdId === 'wise') {
-        selectedVoice = voices.find(voice => 
-          voice.name.includes('Victoria') || // macOS
-          voice.name.includes('Microsoft Hazel') || // Windows
-          voice.lang.startsWith('en') && voice.name.includes('Female')
-        );
-      }
+        // Prefer high-quality, kid-friendly voices for different birds
+        if (birdId === 'chirpy') {
+          selectedVoice = voices.find(voice => 
+            // Prioritize natural, warm female voices
+            voice.name.includes('Samantha') || // macOS - very natural
+            voice.name.includes('Google UK English Female') || // Chrome
+            voice.name.includes('Microsoft Zira Desktop') || // Windows 10+
+            voice.name.includes('Allison') || // Some systems
+            (voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female') && voice.name.includes('neural'))
+          ) || voices.find(voice => 
+            voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female')
+          );
+        } else if (birdId === 'buddy') {
+          selectedVoice = voices.find(voice => 
+            // Friendly, energetic male voices
+            voice.name.includes('Alex') || // macOS - natural male
+            voice.name.includes('Google UK English Male') || // Chrome
+            voice.name.includes('Microsoft Mark Desktop') || // Windows 10+
+            voice.name.includes('Tom') || // Some systems
+            (voice.lang.startsWith('en') && voice.name.toLowerCase().includes('male') && voice.name.includes('neural'))
+          ) || voices.find(voice => 
+            voice.lang.startsWith('en') && voice.name.toLowerCase().includes('male')
+          );
+        } else if (birdId === 'wise') {
+          selectedVoice = voices.find(voice => 
+            // Gentle, wise-sounding voices
+            voice.name.includes('Victoria') || // macOS
+            voice.name.includes('Microsoft Hazel Desktop') || // Windows 10+
+            voice.name.includes('Karen') || // Some systems
+            (voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female') && voice.name.includes('neural'))
+          ) || voices.find(voice => 
+            voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female')
+          );
+        }
 
-      // Fallback to any English voice
-      if (!selectedVoice) {
-        selectedVoice = voices.find(voice => voice.lang.startsWith('en')) || voices[0];
-      }
+        // Fallback to the most natural English voice available
+        if (!selectedVoice) {
+          selectedVoice = voices.find(voice => 
+            voice.lang.startsWith('en') && (
+              voice.name.includes('neural') || 
+              voice.name.includes('premium') ||
+              voice.name.includes('natural')
+            )
+          ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+        }
 
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      }
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+        }
 
-      // Make it sound more natural and child-friendly
-      utterance.rate = bird.voiceSettings.speed || 0.9; // Slightly slower for clarity
-      utterance.pitch = bird.voiceSettings.pitch !== undefined ? 
-        1 + (bird.voiceSettings.pitch / 10) : 1.1; // Slightly higher pitch for friendliness
-      utterance.volume = 0.8; // Not too loud
+        // Enhanced voice settings for child-friendly, natural speech
+        const baseRate = bird.voiceSettings.speed || 0.85; // Slower for clarity and warmth
+        const basePitch = bird.voiceSettings.pitch !== undefined ? 
+          1 + (bird.voiceSettings.pitch / 8) : 1.15; // Higher pitch for friendliness
+        
+        // Adjust based on bird personality
+        if (birdId === 'chirpy') {
+          utterance.rate = baseRate;
+          utterance.pitch = basePitch;
+          utterance.volume = 0.85;
+        } else if (birdId === 'buddy') {
+          utterance.rate = baseRate + 0.1; // Slightly faster for playfulness
+          utterance.pitch = basePitch + 0.1;
+          utterance.volume = 0.9; // Slightly louder for energy
+        } else if (birdId === 'wise') {
+          utterance.rate = baseRate - 0.1; // Slower for wisdom
+          utterance.pitch = basePitch - 0.15; // Lower for authority but still friendly
+          utterance.volume = 0.8;
+        }
 
-      // Add natural pauses and intonation
-      const processedText = addNaturalPauses(text);
-      utterance.text = processedText;
+        // Add natural pauses and child-friendly intonation
+        const processedText = addNaturalChildFriendlyPauses(text, birdId);
+        utterance.text = processedText;
 
-      utterance.onstart = () => {
-        // Trigger talking animation
-        setBirdMood(birdId, 'talk');
-        triggerBirdAnimation(birdId, 'talk');
+        utterance.onstart = () => {
+          // Trigger talking animation with personality
+          setBirdMood(birdId, 'talk');
+          triggerBirdAnimation(birdId, 'talk');
+        };
+
+        utterance.onend = () => {
+          // Return to appropriate idle mood
+          setBirdMood(birdId, 'idle');
+          resolve();
+        };
+
+        utterance.onerror = (error) => {
+          console.error('Speech synthesis error:', error);
+          setBirdMood(birdId, 'idle');
+          resolve();
+        };
+
+        speechSynthesis.speak(utterance);
       };
 
-      utterance.onend = () => {
-        // Return to idle mood
-        setBirdMood(birdId, 'idle');
-        resolve();
-      };
-
-      utterance.onerror = (error) => {
-        console.error('Speech synthesis error:', error);
-        setBirdMood(birdId, 'idle');
-        resolve();
-      };
-
-      speechSynthesis.speak(utterance);
+      // Handle voice loading
+      if (speechSynthesis.getVoices().length === 0) {
+        speechSynthesis.addEventListener('voiceschanged', setupVoice, { once: true });
+      } else {
+        setupVoice();
+      }
     });
   }, [birds, setBirdMood, triggerBirdAnimation]);
 
-  // Add natural pauses and intonation to text
-  const addNaturalPauses = useCallback((text: string): string => {
-    return text
-      .replace(/\./g, '. ') // Pause after periods
-      .replace(/\?/g, '? ') // Pause after questions
-      .replace(/!/g, '! ') // Pause after exclamations
-      .replace(/,/g, ', ') // Brief pause after commas
+  // Add natural, child-friendly pauses and intonation to text
+  const addNaturalChildFriendlyPauses = useCallback((text: string, birdId: string): string => {
+    let processedText = text;
+    
+    // Add personality-specific speech patterns
+    if (birdId === 'chirpy') {
+      // Warm, encouraging tone with gentle pauses
+      processedText = processedText
+        .replace(/\./g, '... ') // Longer pause for warmth
+        .replace(/\?/g, '? ') // Questioning tone
+        .replace(/!/g, '! ') // Excited but not overwhelming
+        .replace(/,/g, ', ') // Natural breathing pauses
+        .replace(/\b(you|your)\b/gi, 'you ') // Emphasize personal connection
+        .replace(/\b(great|wonderful|amazing|fantastic)\b/gi, (match) => `${match} `) // Emphasize praise
+    } else if (birdId === 'buddy') {
+      // Playful, energetic tone with bouncy rhythm
+      processedText = processedText
+        .replace(/\./g, '. ') // Quick pauses for energy
+        .replace(/\?/g, '?? ') // Extra enthusiasm in questions
+        .replace(/!/g, '!! ') // High energy exclamations
+        .replace(/,/g, ', ') // Brief pauses
+        .replace(/\b(fun|play|game|awesome|cool)\b/gi, (match) => `${match}! `) // Add excitement to fun words
+    } else if (birdId === 'wise') {
+      // Gentle, thoughtful tone with contemplative pauses
+      processedText = processedText
+        .replace(/\./g, '... ') // Thoughtful pauses
+        .replace(/\?/g, '? ') // Gentle questioning
+        .replace(/!/g, '. ') // Convert exclamations to gentler periods
+        .replace(/,/g, '... ') // Longer contemplative pauses
+        .replace(/\b(think|remember|understand|learn)\b/gi, (match) => `${match}... `) // Pause after thinking words
+    }
+    
+    // General child-friendly improvements
+    return processedText
+      .replace(/\b(hi|hello|hey)\b/gi, (match) => `${match}! `) // Friendly greetings
+      .replace(/\b(thank you|thanks)\b/gi, (match) => `${match}! `) // Grateful tone
+      .replace(/\b(please)\b/gi, 'please ') // Polite pauses
       .replace(/\s+/g, ' ') // Clean up extra spaces
+      .replace(/\.\.\.\s*\.\.\./g, '... ') // Fix multiple ellipses
       .trim();
   }, []);
 
@@ -242,22 +314,29 @@ export function ConversationalAssessmentEngine({
       emotion_recognition: [
         {
           speaker: 'chirpy',
-          text: "Let's play a fun game! I'm going to show you different feelings with my face.",
+          text: "Let's play an exciting feeling game! I love seeing all the different expressions you can make!",
           mood: 'demo'
         },
         {
           speaker: 'chirpy',
-          text: "Look at my face now - how do you think I'm feeling?",
+          text: "Can you show me your biggest, happiest smile? I want to see those happy eyes light up too!",
           mood: 'cheer',
           waitForResponse: true,
-          analysisObjectives: ['assess_emotion_recognition', 'evaluate_attention', 'measure_understanding']
+          analysisObjectives: ['assess_expression_control', 'measure_facial_mirroring', 'evaluate_emotional_range']
         },
         {
           speaker: 'chirpy',
-          text: "Great job! Now can you show me what you look like when you're really happy?",
+          text: "Wow, that was amazing! Now tell me about a time when you felt really excited, and let your face show me that excitement!",
           mood: 'idle',
           waitForResponse: true,
-          analysisObjectives: ['assess_expression_control', 'measure_facial_mirroring', 'evaluate_compliance']
+          analysisObjectives: ['assess_emotional_storytelling', 'measure_expression_authenticity', 'evaluate_narrative_emotion_connection']
+        },
+        {
+          speaker: 'buddy',
+          text: "Your turn to be the teacher! Can you show me what a confused face looks like? And maybe tell me when you might feel confused?",
+          mood: 'think',
+          waitForResponse: true,
+          analysisObjectives: ['assess_emotional_understanding', 'evaluate_teaching_ability', 'measure_empathy']
         }
       ],
       story_sharing: [
@@ -616,13 +695,14 @@ export function ConversationalAssessmentEngine({
 
   return (
     <div className={cn('space-y-6', className)}>
-      {/* Real-time Analysis Engine (hidden) */}
+      {/* Real-time Analysis Engine (always active for all questions) */}
       <RealTimeAnalysisEngine
         onAnalysisUpdate={handleAnalysisUpdate}
         isActive={isActive}
         enableFacialAnalysis={true}
         enableSpeechAnalysis={true}
         enableEyeTracking={true}
+        analysisFrequency={300} // More frequent analysis for better responsiveness
       />
 
       {/* Bird Characters */}
@@ -667,26 +747,73 @@ export function ConversationalAssessmentEngine({
               {segments[currentSegmentIndex]?.title}
             </div>
 
-            {/* Speech Input - No typed questions, only live transcription */}
+            {/* Interactive Response Interface - Voice and Facial Recognition */}
             {isWaitingForResponse && (
               <div className="space-y-4">
-                <div className="bg-secondary/20 rounded-lg p-4">
-                  <p className="text-muted-foreground text-sm mb-2">
-                    🎤 Listening for your response...
+                <div className="bg-gradient-to-r from-primary/10 to-secondary/20 rounded-lg p-4 border-2 border-primary/20">
+                  <p className="text-primary font-medium text-center mb-2">
+                    🎤 I'm listening and watching for your response!
                   </p>
-                  <p className="text-primary font-medium">
-                    Take your time and speak naturally!
+                  <p className="text-muted-foreground text-sm text-center">
+                    Speak naturally and show me how you feel with your face! 😊
                   </p>
                 </div>
                 
-                <SpeechRecorder
-                  onRecordingComplete={(audioBlob, analysis) => {
-                    handleChildResponse(analysis.transcription, audioBlob);
-                  }}
-                  maxDuration={30}
-                  expectedKeywords={[]}
-                  showLiveTranscription={true}
-                />
+                {/* Combined Speech and Facial Recognition */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Speech Recognition */}
+                  <SpeechRecorder
+                    onRecordingComplete={(audioBlob, analysis) => {
+                      handleChildResponse(analysis.transcription, audioBlob);
+                    }}
+                    maxDuration={30}
+                    expectedKeywords={[]}
+                    showLiveTranscription={true}
+                  />
+                  
+                  {/* Live Facial Recognition Feedback */}
+                  <div className="bg-card rounded-lg p-4 border">
+                    <div className="text-center space-y-2">
+                      <div className="text-2xl">📹</div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Live Expression Detection
+                      </p>
+                      {analysisState?.current.facialEmotion && (
+                        <div className="space-y-2">
+                          <div className="bg-primary/10 rounded-lg p-3">
+                            <p className="text-xs text-muted-foreground mb-1">Current expression:</p>
+                            <p className="text-lg font-bold capitalize text-primary">
+                              {analysisState.current.facialEmotion.primary}
+                            </p>
+                            <div className="w-full bg-secondary rounded-full h-2 mt-2">
+                              <div 
+                                className="bg-primary h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${analysisState.current.facialEmotion.confidence * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Eye Contact Feedback */}
+                          <div className="bg-secondary/20 rounded-lg p-2">
+                            <div className="flex items-center justify-center space-x-2">
+                              <div className={`w-2 h-2 rounded-full ${
+                                analysisState.current.eyeContact.isLookingAtCamera 
+                                  ? 'bg-green-500 animate-pulse' 
+                                  : 'bg-gray-400'
+                              }`} />
+                              <p className="text-xs text-muted-foreground">
+                                {analysisState.current.eyeContact.isLookingAtCamera 
+                                  ? 'Great eye contact! 👀' 
+                                  : 'Look at me when you speak 😊'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

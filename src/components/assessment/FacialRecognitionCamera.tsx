@@ -258,13 +258,30 @@ export function FacialRecognitionCamera({
   };
 
   const simulateEmotionDetection = () => {
+    // More realistic emotion detection with better variety and less neutral
     const emotions = [
-      { emotion: 'happy', confidence: 0.8 },
-      { emotion: 'neutral', confidence: 0.7 },
-      { emotion: 'engaged', confidence: 0.75 },
-      { emotion: 'curious', confidence: 0.6 }
+      { emotion: 'happy', confidence: 0.85 },
+      { emotion: 'focused', confidence: 0.80 },
+      { emotion: 'curious', confidence: 0.75 },
+      { emotion: 'excited', confidence: 0.70 },
+      { emotion: 'engaged', confidence: 0.82 },
+      { emotion: 'thoughtful', confidence: 0.65 },
+      { emotion: 'neutral', confidence: 0.60 }  // Lower confidence for neutral
     ];
-    return emotions[Math.floor(Math.random() * emotions.length)];
+    
+    // Bias toward more expressive emotions
+    const weights = [0.25, 0.20, 0.18, 0.15, 0.12, 0.08, 0.02];
+    const random = Math.random();
+    let cumulative = 0;
+    
+    for (let i = 0; i < emotions.length; i++) {
+      cumulative += weights[i];
+      if (random < cumulative) {
+        return emotions[i];
+      }
+    }
+    
+    return emotions[0]; // fallback to happy
   };
 
   const simulateHeadPoseEstimation = () => {
