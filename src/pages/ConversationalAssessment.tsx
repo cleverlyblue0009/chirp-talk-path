@@ -407,7 +407,13 @@ export function ConversationalAssessment({
               size="large" 
               animation="bounce"
               showBubble
+              speakMessage={true}
               message={`Hi ${childName}! Ready to chat?`}
+              voiceSettings={{
+                rate: 0.9,
+                pitch: 1.1,
+                volume: 0.8
+              }}
             />
             
             <div className="space-y-4">
